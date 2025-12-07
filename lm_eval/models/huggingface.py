@@ -628,6 +628,7 @@ class HFLM(TemplateLM):
                 subfolder=subfolder,
                 **model_kwargs,
             )
+            self._model = self._model.to(get_dtype(dtype))
         else:
             if autogptq and gptqmodel:
                 raise ValueError(
@@ -1281,6 +1282,8 @@ class HFLM(TemplateLM):
                 # Check if per-token argmax is exactly equal to continuation
                 greedy_tokens = logits.argmax(dim=-1)
 
+                # print("1", request_str, ctx_tokens)
+
                 # check for one-token continuation cache hits.
                 # noop in case group_by != "contexts" or no cache hit and returns the
                 # original args. Otherwise, expands the logits batch dimension and yields each
@@ -1302,6 +1305,7 @@ class HFLM(TemplateLM):
                         greedy_tokens[:, -cont_toks.shape[1] :] == cont_toks
                     ).all()
 
+
                     # Obtain log-probs at the corresponding continuation token indices
                     # last_token_slice = logits[:, -1, :].squeeze(0).tolist()
                     logits = torch.gather(logits, 2, cont_toks.unsqueeze(-1)).squeeze(
@@ -1310,6 +1314,7 @@ class HFLM(TemplateLM):
 
                     # Answer: (log prob, is-exact-match)
                     answer = (float(logits.sum()), bool(max_equal))
+                    # print("2", request_str, greedy_tokens[:, -cont_toks.shape[1] :], cont_toks, float(logits.sum()), bool(max_equal))
 
                     res.append(answer)
 
